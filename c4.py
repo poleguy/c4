@@ -1,24 +1,41 @@
 #qpy:qpyapp
-# switch sides
-# undo redo
-# unwin rewin
+
+# Originally written by Carmen Dietz and Nicholas Dietz on a mobile phone.
+# 
 
 
-print("hello")
+
+print("enter 1-7 to drop a piece")
+print("enter u to undo previous moves")
+print("enter r to redo previously undone moves")
+print("enter s to swap sides... not implemented: you can just play the other person's turn.")
+print("enter q to quit")
 
 def print_m1(m):
     for i in range(6):
         print(m[i])
         
 def print_m(m):
-    print(" 0 1 2 3 4 5 6")
+    print(" 1 2 3 4 5 6 7")
     for i in range(6):
         print("|",end='')
         for j in range(7):
             if m[i][j] == 0:
                 print(' |',end='')
             else:            
-                print('%d|'%m[i][j],end='')
+                #print('%d|'%m[i][j],end='')
+                CRED    = '\33[31m'
+                CYELLOW    = '\33[33m'
+                CREDBG    = '\33[41m'
+                CGREENBG  = '\33[42m'
+                CYELLOWBG = '\33[43m'
+                CEND      = '\33[0m'
+
+                if m[i][j] == 1:
+                    print(CREDBG+'C'+CEND+'|',end='')
+                    
+                else:
+                    print(CYELLOWBG+'N'+CEND+'|',end='')
         print('')
 
 def drop(m,n,p):
@@ -30,23 +47,18 @@ def drop(m,n,p):
     raise ValueError
      
 def input_n():
-    x = None
-    while x not in [0,1,2,3,4,5,6]:
-        try:
-            x = input()
-           
-            if x in ["u","r","s"]:
-                print("urs")
-                return x
-            x = int(x)   
-        except ValueError as e:
-            x = None
-    return x
+    while True:
+        x = input()
+        if x in ["1","2","3","4","5","6","7"]:
+            return int(x)-1
+        elif x in ["u","r","s","c","q"]:
+            # undo, redo, swap, clear, quit
+            return x
+        else:
+            raise ValueError("invalid input")
 
 def on_win(n,m):
     print("%s wins!"%n)
-    print_m(m)
-    x=input()
     
 def win(m):
     ds = [[(0,5),(1,5),(2,5),(3,5),(4,5),(5,5),(6,5)],
@@ -91,10 +103,8 @@ def win(m):
                     count = 0
                 if count == 4:
                     w = 1
-                    print("win %d"%player)
-                    on_win(p[player],m)
-                    return w, player
-    return 0, None
+                    return player
+    return 0
                     
                 
     #print(m)
@@ -124,59 +134,92 @@ def m_init():
      
 #win(m)
 
-for i in range(3):
-    moves=[]
-    redo_list=[]
-    p = [" "," "]
-    p[0] = "Carmen"
-    p[1] = "Nick"
-    m = m_init()
-    player=0
-    last=7
-    n=0
-    while n < (7*6):
-        print(player)
-        print_m(m)
-        print("%s:" % p[player])
-        x = input_n()
-        print(x)
-        if x == "u":
-            try:#undo
-                last= moves.pop()
-                redo_list.append(last)
-                m = undo(m,last)
-                n-=1
-                player=(n)%2
-   
-            except IndexError as e:
-                pass
-            print(redo_list)
-        elif x == 'r':
+def main():
+    try:
+        moves=[]
+        redo_list=[]
+        p = [" "," "]
+        p[0] = "Carmen"
+        p[1] = "Nick"
+        m = m_init()
+        player=0
+        last=7
+        n=0
+        print_err = False
+        while True:
+            print_m(m)
+            if win(m) > 0:
+                #print("win %d"%player)
+                on_win(p[player-1],m)
+            if print_err:
+                print(error_msg)
+                print_err = False
+            print("%s's turn:" % p[player])
             try:
-                last=redo_list.pop()
-                moves.append(last)
-                m = drop(m,last,player+1)
-                n-=1
-                player=(n)%2
-   
-            except IndexError as e:
-                pass
-        elif x == 's':
-            print('swap')
-        else:
-            try:
+                x = input_n()
+            except ValueError as e:
+                print_err = True
+                error_msg = "Invalid input, try again"
+                continue
+            print(x)
+            if x == "u":
+                try:#undo
+                    last= moves.pop()
+                    redo_list.append(last)
+                    m = undo(m,last)
+                    n-=1
+                    player=(n)%2
+       
+                except IndexError as e:
+                    pass
+                print(redo_list)
+            elif x == 'r':
+                try:
+                    last=redo_list.pop()
+                    moves.append(last)
+                    m = drop(m,last,player+1)
+                    n-=1
+                    player=(n)%2
+       
+                except IndexError as e:
+                    pass
+            elif x == 's':
+                print('swap')
+            elif x == 'c':
+                print('clear')
+                # undo all moves
+                for i in range(len(moves)):
+                    last= moves.pop()
+                    redo_list.append(last)
+                    m = undo(m,last)
+                    n-=1
+                    player=(n)%2
+            elif x == 'q':
+                print('Game has been put away.')
+                return
+            else:
                 print(x)
-                m = drop(m,x,player+1)
+                try:
+                    m = drop(m,x,player+1)
+                except ValueError as e:
+                    print_err = True
+                    error_msg = "Invalid move, try again"
+                    continue
                 moves.append(x)
                 redo_list=[]
                 n += 1
                 player=(n)%2
-            except ValueError as e:
-                pass
-          
-        print(moves)
-        x,pp = win(m)
-        if x:
-            break
-          
-        
+              
+            print(moves)
+            if win(m) > 0:
+                on_win(p[player-1],m)
+     
+            #if x:
+            #    break
+              
+    except KeyboardInterrupt as e:
+        print("\nMom put away the game.")
+        return
+
+if __name__ == '__main__':
+    main()
